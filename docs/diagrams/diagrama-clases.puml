@@ -1,0 +1,112 @@
+@startuml Biblioteca
+' Fuente editable equivalente a diagrama-clases.dot (renderizar en plantuml.com o IntelliJ)
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Biblioteca {
+  - nombre: String
+  - catalogo: Map<String, MaterialBibliografico>
+  - prestamos: List<Prestamo>
+  + Biblioteca(nombre: String)
+  + agregarMaterial(m: MaterialBibliografico): void
+  + prestar(l: Lector, codigo: String, fecha: LocalDate): Prestamo
+  + devolver(p: Prestamo, fecha: LocalDate): long
+  + estaDisponible(codigo: String): boolean
+  + buscarMaterial(codigo: String): MaterialBibliografico
+  + inventario(): List<String>
+  + getCatalogo(): List<MaterialBibliografico> {readOnly}
+  + getPrestamos(): List<Prestamo> {readOnly}
+  - validarDisponibilidad(m: MaterialBibliografico): void
+  - validarCupo(l: Lector): void
+  - estaPrestado(m: MaterialBibliografico): boolean
+}
+
+abstract class MaterialBibliografico {
+  - codigo: String
+  - titulo: String
+  - autor: String
+  - anioPublicacion: int
+  # MaterialBibliografico(codigo, titulo, autor, anioPublicacion)
+  + {abstract} obtenerTipo(): String
+  + {abstract} diasMaximosPrestamo(): int
+  + calcularMulta(diasRetraso: long): long {leaf}
+  # {abstract} calcularMultaPorRetraso(dias: long): long
+  + mostrarInformacion(): String {leaf}
+  # {abstract} detalleEspecifico(): String
+}
+note right of MaterialBibliografico
+  inv: codigo, titulo, autor no vacíos
+  inv: 1 <= anioPublicacion <= año actual
+end note
+
+class LibroImpreso {
+  + {static} DIAS_PRESTAMO: int = 15
+  + {static} MULTA_DIARIA: long = 1000
+  + {static} MULTA_MAXIMA: long = 30000
+  - numeroPaginas: int
+  - isbn: String
+  + LibroImpreso(codigo, titulo, autor, anio, numeroPaginas, isbn)
+  + obtenerTipo(): String
+  + diasMaximosPrestamo(): int
+  # calcularMultaPorRetraso(dias: long): long
+  # detalleEspecifico(): String
+  + abrirLibro(): String
+}
+
+class RecursoDigital {
+  + {static} DIAS_PRESTAMO: int = 7
+  + {static} TAMANIO_MAXIMO_MB: double = 2048
+  - formato: FormatoDigital
+  - tamanioMB: double
+  + RecursoDigital(codigo, titulo, autor, anio, formato, tamanioMB)
+  + obtenerTipo(): String
+  + diasMaximosPrestamo(): int
+  # calcularMultaPorRetraso(dias: long): long
+  # detalleEspecifico(): String
+  + descargar(): String
+}
+
+class Lector {
+  + {static} MAX_PRESTAMOS_ACTIVOS: int = 3
+  - documento: String
+  - nombre: String
+  - email: String
+  - prestamos: List<Prestamo>
+  + Lector(documento, nombre, email)
+  + puedeTomarPrestamo(): boolean
+  + prestamosActivos(): long
+  ~ agregarPrestamo(p: Prestamo): void
+  + getPrestamos(): List<Prestamo> {readOnly}
+  + mostrarInformacion(): String
+}
+
+class Prestamo {
+  - fechaPrestamo: LocalDate
+  - fechaVencimiento: LocalDate
+  - fechaDevolucion: LocalDate [0..1]
+  - estado: EstadoPrestamo
+  - multa: long
+  ~ Prestamo(l: Lector, m: MaterialBibliografico, fecha: LocalDate)
+  ~ registrarDevolucion(fecha: LocalDate): long
+  + estaActivo(): boolean
+  + getFechaVencimiento(): LocalDate
+  + getFechaDevolucion(): Optional<LocalDate>
+  + getMulta(): long
+}
+
+enum FormatoDigital { PDF
+EPUB
+MP3
+MP4 }
+enum EstadoPrestamo { ACTIVO
+DEVUELTO }
+
+MaterialBibliografico <|-- LibroImpreso
+MaterialBibliografico <|-- RecursoDigital
+Biblioteca "1" o-- "0..* catalogo" MaterialBibliografico
+Biblioteca "1" *-- "0..* prestamos" Prestamo
+Lector "lector 1" -- "historial 0..*" Prestamo : {máx. 3 ACTIVO}
+Prestamo "0..*" --> "material 1" MaterialBibliografico
+Prestamo --> "estado 1" EstadoPrestamo
+RecursoDigital --> "formato 1" FormatoDigital
+@enduml
